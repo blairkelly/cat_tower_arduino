@@ -1,4 +1,4 @@
-cat_tower_arduino
-=================
+cattracker
+==========
 
-Cat Tower, Arduino Brain
+Code for a cat tracker prototype
