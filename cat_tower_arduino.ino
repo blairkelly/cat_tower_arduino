@@ -3,6 +3,7 @@
 //quick options
 boolean ps = false;    //print sensors?
 boolean lightsout = false; //keep the light off for testing purposes?
+boolean ignoremain = false; //ignore the main door switch?
 
 //pins
 //sensorpins
@@ -28,11 +29,19 @@ unsigned long checkintime = millis() + checkindelay;
 int dbd_catdoor = 100;   //amount of time it takes to consider the cat door "opened"
 unsigned long dbd_cat_in = millis();  //cat in-door debounce time
 unsigned long dbd_cat_out = millis();  //cat out-door debounce time
+unsigned long dbd_maindoor = millis();  //maindoor debounce time
+unsigned long dbd_fooddoor = millis();  //fooddoor debounce time
+unsigned long dbd_walle = millis();  //walle debounce time
 boolean dbd_cat_in_d = false; //cat in door debouncing state.
 boolean dbd_cat_out_d = false; //cat out door debouncing state.
+boolean dbd_maindoor_d = false; //maindoor debouncing state.
+boolean dbd_fooddoor_d = false; //fooddoor debouncing state.
+boolean dbd_walle_d = false; //walle debouncing state.
 boolean catindoor = CLOSED;
 boolean catoutdoor = CLOSED;
 boolean maindoor = CLOSED;
+boolean fooddoor = CLOSED;
+boolean walle = false;
 int catsinside = 0;   //how many cats are inside?
 
 void setup() {
@@ -79,7 +88,7 @@ void printsensors() {
     pfs(", pinFoodDoor");
     pfi(analogRead(pinFoodDoor));
     pfl();
-    delay(500);
+    delay(111);
   }
 }
 
@@ -158,10 +167,101 @@ void dodoors() {
       }
     }
   }
+
+  //read maintenance door
+  if(!ignoremain) {
+    if(analogRead(pinMainDoor) > 490) {
+      //cat door appears to be open
+      if(!dbd_maindoor_d) {
+        dbd_maindoor = millis() + dbd_catdoor;
+        dbd_maindoor_d = true;
+      } else if (dbd_maindoor_d) {
+        if(millis() > dbd_maindoor) {
+          dbd_maindoor_d = false;
+          maindoor = OPEN;
+          kittylight(ON);
+        }
+      }
+    } else {
+      if(maindoor) {
+        if(!dbd_maindoor_d) {
+          dbd_maindoor_d = true;
+          dbd_maindoor = millis() + (dbd_catdoor * 10);
+        } else if (millis() > dbd_maindoor) {
+          dbd_maindoor_d = false;
+          maindoor = CLOSED;
+          pfs("twat!");
+          pfl();
+          kittylight(OFF);
+        }
+      }
+    }
+  }
+
+  //read food door
+  if(analogRead(pinFoodDoor) > 120) {
+    //cat door appears to be open
+    if(!dbd_fooddoor_d && !fooddoor) {
+      dbd_fooddoor = millis() + dbd_catdoor;
+      dbd_fooddoor_d = true;
+    } else if (dbd_fooddoor_d) {
+      if((millis() > dbd_fooddoor) && !fooddoor) {
+        dbd_fooddoor_d = false;
+        fooddoor = OPEN;
+        pfs("FoodDoor OPEN");
+        pfl();
+      }
+    }
+  } else {
+    if(fooddoor) {
+      if(!dbd_fooddoor_d) {
+        dbd_fooddoor_d = true;
+        dbd_fooddoor = millis() + dbd_catdoor;
+      } else if (millis() > dbd_fooddoor) {
+        dbd_fooddoor_d = false;
+        fooddoor = CLOSED;
+        pfs("FoodDoor CLOSED");
+        pfl();
+      }
+    }
+  }
+}
+
+void checkwalle() {
+  //read Wall-E
+  if(analogRead(pinWalle) > 333) {
+    //it appears there's a cat in front of Wall-E
+    if(!dbd_walle_d && !walle) {
+      dbd_walle = millis() + 333;
+      dbd_walle_d = true;
+    } else if (dbd_walle_d) {
+      if((millis() > dbd_walle) && !walle) {
+        dbd_walle_d = false;
+        walle = true;
+        kittylight(ON);
+        pfs("Wall-E sees a kitty.");
+        pfl();
+      }
+    }
+  } else {
+    if(walle) {
+      if(!dbd_walle_d) {
+        dbd_walle_d = true;
+        dbd_walle = millis() + 3333;
+      } else if (millis() > dbd_walle) {
+        dbd_walle_d = false;
+        walle = CLOSED;
+        //kittylight(OFF);
+        pfs("Wall-E can't see a kitty.");
+        pfl();
+      }
+    }
+  }
 }
 
 void loop() {
   dodoors();
   checklight();
+  checkwalle();
   printsensors();
 }
