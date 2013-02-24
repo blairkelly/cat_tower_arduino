@@ -22,6 +22,7 @@ boolean ON = 1;
 boolean OFF = 0;
 boolean OPEN = 1;
 boolean CLOSED = 0;
+boolean lightis = OFF;
 unsigned long lightondelay = 120000;   //minimum duration for which the light is kept on.
 unsigned long lightwentonat = millis();   //what time did the light go on at?
 unsigned long checkindelay = 60000;   //check-in interval
@@ -93,24 +94,28 @@ void printsensors() {
 }
 
 void checkin() {
-  pfs("catsinside = ");
-  pfi(catsinside);
-  pfl();
+  // pfs("catsinside = ");
+  // pfi(catsinside);
+  // pfl();
 }
 
 void kittylight(boolean state) {
   if(state && !lightsout && !digitalRead(pinKittyLight)) {
     digitalWrite(pinKittyLight, ON);
-    delay(110); //delay in order to avoid bad sensor readings due to power fluctuation.
+    lightis = ON;
+    delay(77); //delay in order to avoid bad sensor readings due to power fluctuation.
     lightwentonat = millis();
   } else if (!state && digitalRead(pinKittyLight)) {
     digitalWrite(pinKittyLight, OFF);
+    lightis = OFF;
   }
 }
 
 void checklight() {
-  if(((millis() - lightwentonat) > lightondelay) && !maindoor) {
-    kittylight(OFF);
+  if(lightis) {
+    if(((millis() - lightwentonat) > lightondelay) && !maindoor) {
+      kittylight(OFF);
+    }
   }
 }
 
@@ -127,7 +132,6 @@ void dodoors() {
         catindoor = OPEN;
         catsinside++;
         kittylight(ON);
-        checkin();
       }
     }
   } else {
@@ -153,7 +157,6 @@ void dodoors() {
         dbd_cat_out_d = false;
         catoutdoor = OPEN;
         catsinside--;
-        checkin();
       }
     }
   } else {
@@ -190,8 +193,6 @@ void dodoors() {
         } else if (millis() > dbd_maindoor) {
           dbd_maindoor_d = false;
           maindoor = CLOSED;
-          pfs("twat!");
-          pfl();
           kittylight(OFF);
         }
       }
